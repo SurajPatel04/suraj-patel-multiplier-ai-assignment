@@ -2,22 +2,15 @@ import pandas as pd
 import logging
 import pathlib
 
-# =====================================================
 # CONFIG
-# =====================================================
-BASE_DIR      = pathlib.Path(__file__).resolve().parent.parent
+BASE_DIR      = pathlib.Path(__file__).resolve().parent
 DATA_DIR      = BASE_DIR / "data" / "processed"
 RAW_DIR       = BASE_DIR / "data" / "raw"
 
-# =====================================================
 # LOGGING
-# =====================================================
 logging.basicConfig(level=logging.INFO, format="%(levelname)s | %(message)s")
 logger = logging.getLogger(__name__)
 
-# =====================================================
-# LOAD FUNCTION
-# =====================================================
 def load_csv(path: pathlib.Path) -> pd.DataFrame:
     """Load CSV with error handling for FileNotFoundError and EmptyDataError."""
     try:
@@ -33,22 +26,14 @@ def load_csv(path: pathlib.Path) -> pd.DataFrame:
         logger.error(str(e))
         raise
 
-# =====================================================
-# MAIN ANALYSIS
-# =====================================================
 def main():
     logger.info("=" * 50)
     logger.info("Starting Data Merging & Analysis Pipeline — Part 2")
     logger.info("=" * 50)
 
-    # Load data
     customers = load_csv(DATA_DIR / "customers_clean.csv")
     orders    = load_csv(DATA_DIR / "orders_clean.csv")
     products  = load_csv(RAW_DIR  / "products.csv")
-
-    # =====================================================
-    # 2.1 — MERGING
-    # =====================================================
 
     # Left-join orders onto customers on customer_id
     orders_with_customers = pd.merge(
@@ -76,17 +61,11 @@ def main():
     logger.info(f"Order rows with no matching customer: {missing_customers}")
     logger.info(f"Order rows with no matching product:  {missing_products}")
 
-    # =====================================================
-    # PREPARE DATA
-    # =====================================================
 
     full_data["order_date"] = pd.to_datetime(full_data["order_date"], errors="coerce")
     completed = full_data[full_data["status"] == "completed"]
 
-    # =====================================================
-    # 2.2.1 — MONTHLY REVENUE TREND
-    # =====================================================
-
+    # MONTHLY REVENUE TREND
     monthly_revenue = (
         completed
         .groupby("order_year_month")["amount"]
@@ -99,10 +78,7 @@ def main():
     monthly_revenue.to_csv(out_path, index=False)
     logger.info(f"Saved → {out_path}")
 
-    # =====================================================
-    # 2.2.2 — TOP CUSTOMERS
-    # =====================================================
-
+    # TOP CUSTOMERS
     top_customers = (
         completed
         .groupby(["customer_id", "name", "region"])["amount"]
@@ -111,10 +87,6 @@ def main():
         .sort_values(by="total_spend", ascending=False)
         .head(10)
     )
-
-    # =====================================================
-    # 2.2.5 — CHURN INDICATOR
-    # =====================================================
 
     latest_date = full_data["order_date"].max()
     cutoff_date = latest_date - pd.Timedelta(days=90)
@@ -130,10 +102,7 @@ def main():
     top_customers.to_csv(out_path, index=False)
     logger.info(f"Saved → {out_path}")
 
-    # =====================================================
-    # 2.2.3 — CATEGORY PERFORMANCE
-    # =====================================================
-
+    # CATEGORY PERFORMANCE
     category_performance = (
         completed
         .groupby("category")
@@ -149,10 +118,7 @@ def main():
     category_performance.to_csv(out_path, index=False)
     logger.info(f"Saved → {out_path}")
 
-    # =====================================================
-    # 2.2.4 — REGIONAL ANALYSIS
-    # =====================================================
-
+    # REGIONAL ANALYSIS
     regional_analysis = (
         completed
         .groupby("region")

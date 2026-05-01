@@ -6,23 +6,17 @@ import pathlib
 
 warnings.filterwarnings("ignore")
 
-# ─────────────────────────────────────────────
 # CONFIG
-# ─────────────────────────────────────────────
-BASE_DIR      = pathlib.Path(__file__).resolve().parent.parent
+BASE_DIR      = pathlib.Path(__file__).resolve().parent
 RAW_DIR       = BASE_DIR / "data" / "raw"
 PROCESSED_DIR = BASE_DIR / "data" / "processed"
 PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 
-# ─────────────────────────────────────────────
 # LOGGING
-# ─────────────────────────────────────────────
 logging.basicConfig(level=logging.INFO, format="%(levelname)s | %(message)s")
 logger = logging.getLogger(__name__)
 
-# ─────────────────────────────────────────────
 # STATUS NORMALIZATION MAP
-# ─────────────────────────────────────────────
 STATUS_MAP = {
     "completed": "completed", "complete": "completed", "done": "completed",
     "DONE": "completed", "COMPLETED": "completed", "Complete": "completed", "Done": "completed",
@@ -33,11 +27,6 @@ STATUS_MAP = {
     "refunded": "refunded", "Refunded": "refunded", "REFUNDED": "refunded",
     "refund": "refunded", "Refund": "refunded", "money back": "refunded",
 }
-
-
-# ════════════════════════════════════════════════════════════
-# HELPER FUNCTIONS
-# ════════════════════════════════════════════════════════════
 
 def load_csv(filepath: pathlib.Path) -> pd.DataFrame:
     """Load CSV with error handling."""
@@ -99,24 +88,22 @@ def print_cleaning_report(name, before, after, dupes_removed):
     print(f"{sep}\n")
 
 
-# ════════════════════════════════════════════════════════════
-# PART 1.1 — CLEAN customers.csv
-# ════════════════════════════════════════════════════════════
+# CLEAN customers.csv
 
 def clean_customers(df: pd.DataFrame) -> pd.DataFrame:
     original_df   = df.copy()
 
-    # 1. Strip whitespace from name and region
+    # Strip whitespace from name and region
     df["name"]    = df["name"].astype(str).str.strip()
     df["region"]  = df["region"].astype(str).str.strip()
 
-    # 2. Replace empty strings with NaN
+    # Replace empty strings with NaN
     df.replace("", np.nan, inplace=True)
 
-    # 3. Parse signup_date safely
+    # Parse signup_date safely
     df["signup_date"] = df["signup_date"].apply(parse_date_safe)
 
-    # 4. Remove duplicates — keep most recent signup_date
+    # Remove duplicates — keep most recent signup_date
     before_dedup  = len(df)
     df = df.sort_values("signup_date", ascending=False, na_position="last")
     df = df.drop_duplicates(subset=["customer_id"], keep="first")
@@ -124,18 +111,17 @@ def clean_customers(df: pd.DataFrame) -> pd.DataFrame:
     dupes_removed = before_dedup - len(df)
     logger.info(f"[customers] Duplicates removed: {dupes_removed}")
 
-    # 5. Format date → YYYY-MM-DD
+    # Format date → YYYY-MM-DD
     df["signup_date"] = pd.to_datetime(df["signup_date"], errors="coerce")
 
-    # 6. Lowercase emails
     df["email"] = df["email"].astype(str).str.lower().str.strip()
     df["email"] = df["email"].replace("nan", np.nan)
 
-    # 7. Flag invalid/missing emails
+    # Flag invalid/missing emails
     df["is_valid_email"] = df["email"].apply(is_valid_email)
     logger.info(f"[customers] Invalid/missing emails flagged: {(~df['is_valid_email']).sum()}")
 
-    # 8. Fill missing region with 'Unknown'
+    # Fill missing region with 'Unknown'
     df["region"] = df["region"].replace("nan", np.nan)
     missing_region = df["region"].isna().sum()
     df["region"] = df["region"].fillna("Unknown")
@@ -145,53 +131,42 @@ def clean_customers(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-# ════════════════════════════════════════════════════════════
-# PART 1.2 — CLEAN orders.csv
-# ════════════════════════════════════════════════════════════
+# CLEAN orders.csv
 
 def clean_orders(df: pd.DataFrame) -> pd.DataFrame:
     original_df = df.copy()
 
-    # 1. Replace empty strings with NaN
     df.replace("", np.nan, inplace=True)
 
-    # 2. Drop rows where BOTH order_id AND customer_id are null
     before_drop = len(df)
     df = df.dropna(subset=["order_id", "customer_id"], how="all")
     dropped = before_drop - len(df)
     logger.info(f"[orders] Unrecoverable rows dropped (both IDs null): {dropped}")
 
-    # 3. Parse order_date with custom multi-format parser
+    # Parse order_date with custom multi-format parser
     df["order_date"] = df["order_date"].apply(parse_date_safe)
 
-    # 4. Fill missing amount with median grouped by product
     missing_amount = df["amount"].isna().sum()
     df["amount"]   = pd.to_numeric(df["amount"], errors="coerce")
     df["amount"]   = df.groupby("product")["amount"].transform(
         lambda x: x.fillna(x.median())
     )
-    # fallback: use global median if whole product group has no amount
+
     df["amount"]   = df["amount"].fillna(df["amount"].median())
     logger.info(f"[orders] Missing amounts filled: {missing_amount}")
 
-    # 5. Normalize status column
     df["status"] = df["status"].apply(normalize_status)
     logger.info("[orders] Status column normalized to controlled vocabulary.")
 
-    # 6. Add derived column order_year_month (YYYY-MM)
+    # Add derived column order_year_month (YYYY-MM)
     df["order_year_month"] = df["order_date"].dt.strftime("%Y-%m")
     logger.info("[orders] Added derived column: order_year_month")
 
-    # 7. Format order_date → YYYY-MM-DD
+    # 7Format order_date → YYYY-MM-DD
     df["order_date"] = pd.to_datetime(df["order_date"], errors="coerce")
 
     print_cleaning_report("orders.csv", original_df, df, dupes_removed=0)
     return df
-
-
-# ════════════════════════════════════════════════════════════
-# PART 1.3 — MAIN
-# ════════════════════════════════════════════════════════════
 
 def main():
     logger.info("=" * 50)

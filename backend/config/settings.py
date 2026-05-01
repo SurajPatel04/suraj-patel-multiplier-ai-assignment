@@ -1,8 +1,5 @@
 import pathlib
 
-# ─────────────────────────────────────────────
-# Config dict — no hardcoded paths elsewhere
-# ─────────────────────────────────────────────
 BASE_DIR     = pathlib.Path(__file__).resolve().parent.parent.parent
 DATA_DIR     = BASE_DIR / "data" / "processed"
 

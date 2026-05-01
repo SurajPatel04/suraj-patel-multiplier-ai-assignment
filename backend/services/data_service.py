@@ -4,10 +4,6 @@ from backend.config.settings import CSV_FILES
 
 
 def load_csv_data(name: str) -> list[dict]:
-    """
-    Load a CSV by config key and return as a list of dicts.
-    Raises HTTP 404 if the file is missing or empty.
-    """
     path = CSV_FILES.get(name)
     if path is None:
         raise HTTPException(status_code=404, detail=f"Unknown dataset: '{name}'")
