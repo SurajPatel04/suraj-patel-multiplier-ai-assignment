@@ -1,18 +1,14 @@
 import sys
 import pathlib
-import pytest
 import pandas as pd
 import numpy as np
 
-# Make the project root importable
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
 from clean_data import is_valid_email, parse_date_safe, normalize_status
 
 
-# ─────────────────────────────────────────────
 # TEST 1: is_valid_email
-# ─────────────────────────────────────────────
 class TestIsValidEmail:
     def test_valid_email(self):
         assert is_valid_email("user@example.com") is True
@@ -36,9 +32,7 @@ class TestIsValidEmail:
         assert is_valid_email("   ") is False
 
 
-# ─────────────────────────────────────────────
 # TEST 2: parse_date_safe
-# ─────────────────────────────────────────────
 class TestParseDateSafe:
     def test_yyyy_mm_dd(self):
         result = parse_date_safe("2024-01-15")
@@ -60,10 +54,7 @@ class TestParseDateSafe:
         result = parse_date_safe(None)
         assert pd.isna(result)
 
-
-# ─────────────────────────────────────────────
 # TEST 3: normalize_status
-# ─────────────────────────────────────────────
 class TestNormalizeStatus:
     def test_completed_variants(self):
         for val in ["completed", "Complete", "DONE", "done", "COMPLETED"]:
