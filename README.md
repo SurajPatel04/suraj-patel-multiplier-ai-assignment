@@ -23,8 +23,8 @@ An analytics dashboard application that visualizes business data, including reve
 ### 0. Clone the repository
 
 ```bash
-git clone https://github.com/SurajPatel04/multiplier-ai-assignment.git
-cd multiplier-ai-assignment
+git clone https://github.com/SurajPatel04/suraj-patel-multiplier-ai-assignment.git
+cd suraj-patel-multiplier-ai-assignment
 ```
 
 ### 1. Data Preparation (Required)
